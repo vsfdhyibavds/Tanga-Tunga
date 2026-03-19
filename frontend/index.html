@@ -1337,12 +1337,20 @@
 
         // Simulate login for development (remove in production)
         function simulateLogin(email) {
+            // Determine role based on email
+            let role = 'student';
+            if (email.includes('admin@')) {
+                role = 'admin';
+            } else if (email.includes('staff@')) {
+                role = 'staff';
+            }
+
             // Mock user data for UI testing only
             const mockUser = {
                 email: email,
                 firstName: email.split('@')[0].split('.')[0] || 'User',
                 lastName: email.split('@')[0].split('.')[1] || 'Test',
-                role: 'student',
+                role: role,  // Now uses detected role from email
                 id: 'RU' + Math.random().toString(36).substr(2, 7),
                 department: 'Computer Science'
             };
@@ -1353,7 +1361,7 @@
             sessionStorage.setItem('authToken', token);
 
             showDashboard();
-            showNotification('Login Successful', `Welcome back!`);
+            showNotification('Login Successful', `Welcome back as ${role.toUpperCase()}!`);
         }
 
         // Validate registration form inputs
@@ -1520,124 +1528,147 @@
             loadEvents();
         }
 
-        function updateStats() {
-            const userRegistrations = events.filter(e => e.registrants.includes(currentUser.email));
-            const userAttended = userRegistrations.filter(e => e.attended > 0);
-            const upcoming = events.filter(e => new Date(e.date) > new Date());
+        async function updateStats() {
+            try {
+                // Get all events from backend
+                const eventsResult = await eventAPI.getAll();
+                const allEvents = eventsResult.success ? (eventsResult.data.events || []) : [];
 
-            document.getElementById('totalEvents').textContent = events.length;
-            document.getElementById('registeredEvents').textContent = userRegistrations.length;
-            document.getElementById('attendedEvents').textContent = userAttended.length;
-            document.getElementById('upcomingEvents').textContent = upcoming.length;
+                // Count stats from backend data
+                const userRegistrations = allEvents.filter(e => e.isRegistered);
+                const upcoming = allEvents.filter(e => new Date(e.date) > new Date());
+
+                document.getElementById('totalEvents').textContent = allEvents.length;
+                document.getElementById('registeredEvents').textContent = userRegistrations.length;
+                document.getElementById('attendedEvents').textContent = '0'; // Would need backend endpoint
+                document.getElementById('upcomingEvents').textContent = upcoming.length;
+            } catch (error) {
+                console.error('Error updating stats:', error);
+                // Set default values on error
+                document.getElementById('totalEvents').textContent = '0';
+                document.getElementById('registeredEvents').textContent = '0';
+                document.getElementById('attendedEvents').textContent = '0';
+                document.getElementById('upcomingEvents').textContent = '0';
+            }
         }
 
-        function loadEvents() {
+        async function loadEvents() {
             const grid = document.getElementById('eventsGrid');
-            grid.innerHTML = '';
+            grid.innerHTML = '<div style="text-align: center; padding: 40px;">Loading events...</div>';
 
-            const filteredEvents = events.filter(event => {
-                if (currentFilter === 'all') return true;
-                return event.category === currentFilter;
-            });
+            try {
+                // Fetch events from backend API
+                const result = await eventAPI.getAll();
 
-            if (filteredEvents.length === 0) {
-                grid.innerHTML = '<div class="empty-state"><h3>No events found</h3><p>Check back later for new events!</p></div>';
-                return;
+                if (!result.success) {
+                    grid.innerHTML = '<div class="empty-state"><h3>Failed to load events</h3><p>' + (result.error || 'Please try again later') + '</p></div>';
+                    return;
+                }
+
+                const allEvents = result.data.events || [];
+                const filteredEvents = allEvents.filter(event => {
+                    if (currentFilter === 'all') return true;
+                    return event.category === currentFilter;
+                });
+
+                if (filteredEvents.length === 0) {
+                    grid.innerHTML = '<div class="empty-state"><h3>No events found</h3><p>Check back later for new events!</p></div>';
+                    return;
+                }
+
+                grid.innerHTML = '';
+
+                filteredEvents.forEach(event => {
+                    const isRegistered = event.isRegistered || false;
+                    const eventDate = new Date(event.date);
+                    const isPast = eventDate < new Date();
+
+                    const card = document.createElement('div');
+                    card.className = 'event-card';
+                    card.setAttribute('data-event-id', event.id);
+
+                    // Build card safely using DOM methods (prevents XSS)
+                    const eventImage = document.createElement('div');
+                    eventImage.className = 'event-image';
+                    eventImage.textContent = '📅';
+                    card.appendChild(eventImage);
+
+                    const category = document.createElement('span');
+                    category.className = `event-category category-${event.category}`;
+                    category.textContent = event.category.toUpperCase();
+                    card.appendChild(category);
+
+                    const title = document.createElement('div');
+                    title.className = 'event-title';
+                    title.textContent = event.title;
+                    card.appendChild(title);
+
+                    const dateInfo = document.createElement('div');
+                    dateInfo.className = 'event-details';
+                    dateInfo.textContent = '📅 ' + new Date(event.date).toLocaleDateString();
+                    card.appendChild(dateInfo);
+
+                    const timeInfo = document.createElement('div');
+                    timeInfo.className = 'event-details';
+                    timeInfo.textContent = '⏰ ' + (event.time || 'TBD');
+                    card.appendChild(timeInfo);
+
+                    const locationInfo = document.createElement('div');
+                    locationInfo.className = 'event-details';
+                    locationInfo.textContent = '📍 ' + event.location;
+                    card.appendChild(locationInfo);
+
+                    const capacityInfo = document.createElement('div');
+                    capacityInfo.className = 'event-details';
+                    capacityInfo.textContent = '👥 ' + (event.registeredCount || 0) + '/' + event.capacity + ' registered';
+                    card.appendChild(capacityInfo);
+
+                    if (isRegistered) {
+                        const badge = document.createElement('span');
+                        badge.className = 'badge badge-success';
+                        badge.textContent = '✓ Registered';
+                        card.appendChild(badge);
+                    }
+
+                    if (isPast) {
+                        const badge = document.createElement('span');
+                        badge.className = 'badge badge-danger';
+                        badge.textContent = 'Past Event';
+                        card.appendChild(badge);
+                    }
+
+                    const actions = document.createElement('div');
+                    actions.className = 'event-actions';
+
+                    const viewBtn = document.createElement('button');
+                    viewBtn.className = 'btn btn-info';
+                    viewBtn.textContent = 'View Details';
+                    viewBtn.onclick = () => viewEvent(event.id);
+                    actions.appendChild(viewBtn);
+
+                    if (!isRegistered && !isPast) {
+                        const registerBtn = document.createElement('button');
+                        registerBtn.className = 'btn btn-success';
+                        registerBtn.textContent = 'Register';
+                        registerBtn.onclick = () => registerForEvent(event.id);
+                        actions.appendChild(registerBtn);
+                    }
+
+                    if (isRegistered) {
+                        const ticketBtn = document.createElement('button');
+                        ticketBtn.className = 'btn btn-warning';
+                        ticketBtn.textContent = 'View Ticket';
+                        ticketBtn.onclick = () => viewTicket(event.id);
+                        actions.appendChild(ticketBtn);
+                    }
+
+                    card.appendChild(actions);
+                    grid.appendChild(card);
+                });
+            } catch (error) {
+                console.error('Error loading events:', error);
+                grid.innerHTML = '<div class="empty-state"><h3>Error loading events</h3><p>Please refresh the page</p></div>';
             }
-
-            filteredEvents.forEach(event => {
-                const isRegistered = event.registrants.includes(currentUser.email);
-                const eventDate = new Date(event.date);
-                const isPast = eventDate < new Date();
-
-                const card = document.createElement('div');
-                card.className = 'event-card';
-                card.setAttribute('data-event-id', event.id);
-
-                // Build card safely using DOM methods (prevents XSS)
-                const eventImage = document.createElement('div');
-                eventImage.className = 'event-image';
-                eventImage.textContent = event.photos[0];
-                card.appendChild(eventImage);
-
-                const category = document.createElement('span');
-                category.className = `event-category category-${event.category}`;
-                category.textContent = event.category.toUpperCase();
-                card.appendChild(category);
-
-                const title = document.createElement('div');
-                title.className = 'event-title';
-                title.textContent = event.title; // Safe: textContent prevents HTML injection
-                card.appendChild(title);
-
-                const dateInfo = document.createElement('div');
-                dateInfo.className = 'event-details';
-                dateInfo.textContent = '📅 ' + event.date + ' at ' + event.time;
-                card.appendChild(dateInfo);
-
-                const locationInfo = document.createElement('div');
-                locationInfo.className = 'event-details';
-                locationInfo.textContent = '📍 ' + event.location;
-                card.appendChild(locationInfo);
-
-                const capacityInfo = document.createElement('div');
-                capacityInfo.className = 'event-details';
-                capacityInfo.textContent = '👥 ' + event.registered + '/' + event.capacity + ' registered';
-                card.appendChild(capacityInfo);
-
-                const rating = document.createElement('div');
-                rating.className = 'event-rating';
-                const stars = document.createElement('span');
-                stars.className = 'stars';
-                stars.textContent = '⭐'.repeat(Math.round(event.rating));
-                rating.appendChild(stars);
-                const ratingValue = document.createElement('span');
-                ratingValue.textContent = '(' + event.rating + ')';
-                rating.appendChild(ratingValue);
-                card.appendChild(rating);
-
-                if (isRegistered) {
-                    const badge = document.createElement('span');
-                    badge.className = 'badge badge-success';
-                    badge.textContent = '✓ Registered';
-                    card.appendChild(badge);
-                }
-
-                if (isPast) {
-                    const badge = document.createElement('span');
-                    badge.className = 'badge badge-danger';
-                    badge.textContent = 'Past Event';
-                    card.appendChild(badge);
-                }
-
-                const actions = document.createElement('div');
-                actions.className = 'event-actions';
-
-                const viewBtn = document.createElement('button');
-                viewBtn.className = 'btn btn-info';
-                viewBtn.textContent = 'View Details';
-                viewBtn.onclick = () => viewEvent(event.id);
-                actions.appendChild(viewBtn);
-
-                if (!isRegistered && !isPast) {
-                    const registerBtn = document.createElement('button');
-                    registerBtn.className = 'btn btn-success';
-                    registerBtn.textContent = 'Register';
-                    registerBtn.onclick = () => registerForEvent(event.id);
-                    actions.appendChild(registerBtn);
-                }
-
-                if (isRegistered) {
-                    const ticketBtn = document.createElement('button');
-                    ticketBtn.className = 'btn btn-warning';
-                    ticketBtn.textContent = 'View Ticket';
-                    ticketBtn.onclick = () => viewTicket(event.id);
-                    actions.appendChild(ticketBtn);
-                }
-
-                card.appendChild(actions);
-                grid.appendChild(card);
-            });
         }
 
         function filterByCategory(category) {
