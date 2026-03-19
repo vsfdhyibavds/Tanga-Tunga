@@ -1971,7 +1971,7 @@
             document.getElementById('createEventModal').classList.remove('active');
         }
 
-        function createEvent() {
+        async function createEvent() {
             const title = document.getElementById('eventTitle').value.trim();
             const category = document.getElementById('eventCategory').value;
             const description = document.getElementById('eventDescription').value.trim();
@@ -2002,36 +2002,35 @@
                 return;
             }
 
-            const newEvent = {
-                id: events.length + 1,
+            // Call backend API to create event
+            const eventData = {
                 title: title,
                 category: category,
                 description: description,
                 date: date,
                 time: time,
                 location: location,
-                capacity: capacity,
-                registered: 0,
-                attended: 0,
-                organizer: currentUser.firstName + ' ' + currentUser.lastName,
-                rating: 0,
-                reviews: [],
-                photos: ['🎉', '📸', '🎊'],
-                registrants: []
+                capacity: capacity
             };
 
-            events.push(newEvent);
-            closeCreateEventModal();
-            document.getElementById('eventTitle').value = '';
-            document.getElementById('eventDescription').value = '';
-            document.getElementById('eventDate').value = '';
-            document.getElementById('eventTime').value = '';
-            document.getElementById('eventLocation').value = '';
-            document.getElementById('eventCapacity').value = '';
+            const result = await eventAPI.create(eventData);
 
-            updateStats();
-            loadEvents();
-            showNotification('Event Created', title + ' has been created successfully!');
+            if (result.success) {
+                closeCreateEventModal();
+                // Clear form
+                document.getElementById('eventTitle').value = '';
+                document.getElementById('eventDescription').value = '';
+                document.getElementById('eventDate').value = '';
+                document.getElementById('eventTime').value = '';
+                document.getElementById('eventLocation').value = '';
+                document.getElementById('eventCapacity').value = '';
+
+                updateStats();
+                loadEvents();
+                showNotification('Event Created', title + ' has been created successfully!');
+            } else {
+                showNotification('Error', result.error || 'Failed to create event', 'error');
+            }
         }
 
         function closeModal() {
