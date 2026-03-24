@@ -1,4 +1,5 @@
 const cron = require('node-cron');
+const { Op } = require('sequelize');
 const Reminder = require('../models/Reminder');
 const Registration = require('../models/Registration');
 const Event = require('../models/Event');
@@ -11,11 +12,16 @@ const scheduleReminders = () => {
         try {
             const now = new Date();
 
-            // Find pending reminders that should be sent
-            const reminders = await Reminder.find({
-                status: 'pending',
-                scheduledFor: { $lte: now }
-            }).populate('user').populate('event');
+            const reminders = await Reminder.findAll({
+                where: {
+                    status: 'pending',
+                    scheduledFor: { [Op.lte]: now }
+                },
+                include: [
+                    { model: User, as: 'user' },
+                    { model: Event, as: 'event' }
+                ]
+            });
 
             for (const reminder of reminders) {
                 try {
@@ -30,7 +36,7 @@ const scheduleReminders = () => {
                     reminder.sentAt = new Date();
                     await reminder.save();
                 } catch (error) {
-                    console.error(`Failed to send reminder ${reminder._id}:`, error);
+                    console.error(`Failed to send reminder ${reminder.id}:`, error);
                     reminder.status = 'failed';
                     await reminder.save();
                 }
@@ -43,50 +49,49 @@ const scheduleReminders = () => {
     console.log('✅ Reminder scheduler initialized');
 };
 
-// Create reminders for registered users
+// Create reminders for registered users (Sequelize)
 const createRemindersForEvent = async (eventId) => {
     try {
-        const event = await Event.findById(eventId);
+        const event = await Event.findByPk(eventId);
         if (!event) return;
 
-        const registrations = await Registration.find({ event: eventId, status: 'registered' });
+        const registrations = await Registration.findAll({
+            where: { eventId, status: 'registered' },
+            include: [{ model: User, as: 'user' }]
+        });
 
         const eventDate = new Date(event.date);
 
-        for (const registration of registrations) {
-            // 24 hours before
-            const time24hBefore = new Date(eventDate.getTime() - 24 * 60 * 60 * 1000);
-            await Reminder.findOrCreate({
-                user: registration.user,
-                event: eventId,
-                reminderType: '24h-before',
-                scheduledFor: time24hBefore
-            });
+        const scheduleMap = [
+            { type: '24h-before', time: new Date(eventDate.getTime() - 24 * 60 * 60 * 1000) },
+            { type: '1h-before', time: new Date(eventDate.getTime() - 60 * 60 * 1000) },
+            { type: 'day-of', time: new Date(eventDate.getTime() - 15 * 60 * 1000) } // 15 minutes prior
+        ];
 
-            // 1 hour before
-            const time1hBefore = new Date(eventDate.getTime() - 60 * 60 * 1000);
-            await Reminder.findOrCreate({
-                user: registration.user,
-                event: eventId,
-                reminderType: '1h-before',
-                scheduledFor: time1hBefore
-            });
+        for (const registration of registrations) {
+            for (const reminder of scheduleMap) {
+                const [entry] = await Reminder.findOrCreate({
+                    where: {
+                        userId: registration.userId,
+                        eventId,
+                        reminderType: reminder.type
+                    },
+                    defaults: {
+                        scheduledFor: reminder.time,
+                        status: 'pending',
+                        method: 'email'
+                    }
+                });
+
+                if (entry && entry.status === 'failed' && entry.scheduledFor <= new Date()) {
+                    entry.status = 'pending';
+                    await entry.save();
+                }
+            }
         }
     } catch (error) {
-        console.error('Error creating reminders:', error);
+        console.error('Error creating reminders for event:', error);
     }
-};
-
-// Utility function to find or create
-Reminder.findOrCreate = async function(filter) {
-    let doc = await this.findOne(filter);
-    if (!doc) {
-        doc = await this.create({
-            ...filter,
-            status: 'pending'
-        });
-    }
-    return doc;
 };
 
 module.exports = { scheduleReminders, createRemindersForEvent };

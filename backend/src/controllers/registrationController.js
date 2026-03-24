@@ -4,6 +4,7 @@ const User = require('../models/User');
 const { generateTicketId } = require('../utils/tokenUtils');
 const { generateQRCode } = require('../utils/qrCodeUtils');
 const { sendEventRegistrationEmail } = require('../utils/emailTemplates');
+const { createRemindersForEvent } = require('../utils/reminderScheduler');
 
 // Register for event
 exports.registerForEvent = async (req, res, next) => {
@@ -61,6 +62,13 @@ exports.registerForEvent = async (req, res, next) => {
             await sendEventRegistrationEmail(user, event);
         } catch (error) {
             console.error('Failed to send registration email:', error);
+        }
+
+        // Schedule reminders for this event registration
+        try {
+            await createRemindersForEvent(eventId);
+        } catch (error) {
+            console.error('Failed to create reminders for event:', error);
         }
 
         res.status(201).json({

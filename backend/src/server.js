@@ -42,8 +42,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Initialize reminder scheduler
-// scheduleReminders();
-// DISABLED: Reminder scheduler needs refactoring for Sequelize
+scheduleReminders();
 
 // API Routes
 app.use('/api/auth', require('./routes/authRoutes'));
