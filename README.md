@@ -71,12 +71,14 @@ npm run seed
 - ✅ Certificate generation and download
 - ✅ User profile management
 - ✅ Attendance history
+- ⚠️ Students cannot create events; create event access is limited to staff/admin
 
 ### Admin/Staff Features
 - ✅ Create and manage events
 - ✅ View registrations and attendance
 - ✅ Check-in attendees via QR code
 - ✅ Issue and manage certificates
+- ✅ Delete events from event feed and detail view (organizer/admin only)
 - ✅ Event analytics and statistics
 - ✅ User management
 - ✅ Email reminders scheduling
@@ -897,9 +899,9 @@ This project is licensed under the MIT License.
 
 ---
 
-**Version:** 1.0.0  
-**Last Updated:** March 17, 2026  
-**Status:** Production Ready ✅  
+**Version:** 1.0.0
+**Last Updated:** March 17, 2026
+**Status:** Production Ready ✅
 **Maintained by:** Development Team
 
 For detailed information about specific components, refer to the individual README files in subdirectories (backend/, frontend/, config/, scripts/).
