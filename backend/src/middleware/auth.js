@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const { verifyJWT } = require('../utils/tokenUtils');
 
 const authMiddleware = async (req, res, next) => {
     try {
@@ -18,7 +19,13 @@ const authMiddleware = async (req, res, next) => {
         }
 
         // Verify token
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const decoded = verifyJWT(token);
+        if (!decoded) {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid token'
+            });
+        }
         req.user = decoded;
         next();
     } catch (error) {
@@ -35,8 +42,10 @@ const optionalAuth = (req, res, next) => {
 
         if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
             token = req.headers.authorization.split(' ')[1];
-            const decoded = jwt.verify(token, process.env.JWT_SECRET);
-            req.user = decoded;
+            const decoded = verifyJWT(token);
+            if (decoded) {
+                req.user = decoded;
+            }
         }
 
         next();

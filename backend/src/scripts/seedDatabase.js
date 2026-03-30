@@ -5,14 +5,14 @@
  * Usage: npm run seed
  */
 
+require('dotenv').config();
+
 const { sequelize } = require('../config/database');
 const User = require('../models/User');
 const Event = require('../models/Event');
 const Registration = require('../models/Registration');
 require('../models'); // Load all associations
 const { v4: uuidv4 } = require('uuid');
-
-require('dotenv').config();
 
 const seedDatabase = async () => {
     try {

@@ -175,7 +175,15 @@ exports.refreshToken = async (req, res, next) => {
             });
         }
 
-        const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+        const { verifyRefreshToken } = require('../utils/tokenUtils');
+        const decoded = verifyRefreshToken(refreshToken);
+        if (!decoded) {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid refresh token'
+            });
+        }
+
         const user = await User.findByPk(decoded.id);
 
         if (!user) {
