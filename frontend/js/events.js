@@ -139,6 +139,9 @@ function formatCalendarMonth(date) {
 }
 
 function formatICalTimestamp(date) {
+    if (!(date instanceof Date) || isNaN(date.getTime())) {
+        return '';
+    }
     return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
 }
 
@@ -149,10 +152,30 @@ function sanitizeForICal(value) {
         .replace(/;/g, '\\;');
 }
 
+function getEventStartDateTime(event) {
+    const rawDate = event?.date;
+    const rawTime = event?.time || '00:00';
+
+    if (!rawDate) {
+        return null;
+    }
+
+    let dateOnly;
+    if (rawDate instanceof Date) {
+        dateOnly = rawDate.toISOString().split('T')[0];
+    } else {
+        dateOnly = String(rawDate).split('T')[0];
+    }
+
+    const dateTimeString = `${dateOnly}T${rawTime}`;
+    const parsed = new Date(dateTimeString);
+    return isNaN(parsed.getTime()) ? null : parsed;
+}
+
 function buildIcsContent(event) {
-    const start = new Date(`${event.date}T${event.time}`);
+    const start = getEventStartDateTime(event);
     const durationMinutes = parseInt(event.duration, 10) || 120;
-    const end = new Date(start.getTime() + durationMinutes * 60000);
+    const end = start ? new Date(start.getTime() + durationMinutes * 60000) : new Date();
     const description = sanitizeForICal(event.description || '');
     const location = sanitizeForICal(event.location || '');
     const title = sanitizeForICal(event.title || 'Tanga Tunga Event');
@@ -177,7 +200,7 @@ function buildIcsContent(event) {
 }
 
 function getGoogleCalendarUrl(event) {
-    const start = new Date(`${event.date}T${event.time}`);
+    const start = getEventStartDateTime(event) || new Date();
     const durationMinutes = parseInt(event.duration, 10) || 120;
     const end = new Date(start.getTime() + durationMinutes * 60000);
     const dates = `${formatICalTimestamp(start)}/${formatICalTimestamp(end)}`;
