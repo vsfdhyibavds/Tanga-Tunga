@@ -1,12 +1,35 @@
 // Profile management utilities
 
 class UserProfileManager {
+    constructor() {
+        this.currentProfile = null;
+    }
+
     async loadProfile(userId) {
+        if (!userId) return null;
+
         const result = await userAPI.getProfile(userId);
-        if (result.success) {
-            return result.data.user;
+        if (result.success && result.data?.user) {
+            this.currentProfile = result.data.user;
+            return this.currentProfile;
         }
+
         return null;
+    }
+
+    async loadAndDisplayProfile(userId) {
+        const profileContainer = document.getElementById('profileContainer');
+        const user = await this.loadProfile(userId);
+
+        if (profileContainer) {
+            if (user) {
+                this.displayProfile(user);
+            } else {
+                profileContainer.innerHTML = '<div class="empty-state">Unable to load profile.</div>';
+            }
+        }
+
+        return user;
     }
 
     async updateProfile(userData) {
@@ -54,7 +77,7 @@ class UserProfileManager {
 
         const avatar = document.createElement('div');
         avatar.className = 'profile-avatar';
-        avatar.textContent = user.firstName?.charAt(0) || '?';
+        avatar.textContent = user.firstName?.charAt(0).toUpperCase() || '?';
         header.appendChild(avatar);
 
         const info = document.createElement('div');
@@ -80,12 +103,32 @@ class UserProfileManager {
         const details = document.createElement('div');
         details.className = 'profile-details';
         details.innerHTML = `
-            <p><strong>Student/Staff ID:</strong> ${user.studentId || ''}</p>
-            <p><strong>Department:</strong> ${user.department || ''}</p>
-            <p><strong>Phone:</strong> ${user.phone || 'Not provided'}</p>
-            <p><strong>Bio:</strong> ${user.bio || 'No bio provided'}</p>
+            <p><strong>Student/Staff ID:</strong> ${escapeHtml(user.studentId || 'N/A')}</p>
+            <p><strong>Department:</strong> ${escapeHtml(user.department || 'N/A')}</p>
+            <p><strong>Phone:</strong> ${escapeHtml(user.phone || 'Not provided')}</p>
+            <p><strong>Bio:</strong> ${escapeHtml(user.bio || 'No bio provided')}</p>
         `;
         card.appendChild(details);
+
+        if (user.stats) {
+            const statsRow = document.createElement('div');
+            statsRow.className = 'profile-stats';
+            statsRow.innerHTML = `
+                <div class="profile-stat">
+                    <span class="profile-stat-value">${user.stats.registeredEvents || 0}</span>
+                    <span>Registered</span>
+                </div>
+                <div class="profile-stat">
+                    <span class="profile-stat-value">${user.stats.attendedEvents || 0}</span>
+                    <span>Attended</span>
+                </div>
+                <div class="profile-stat">
+                    <span class="profile-stat-value">${user.stats.certificates || 0}</span>
+                    <span>Certificates</span>
+                </div>
+            `;
+            card.appendChild(statsRow);
+        }
 
         const actions = document.createElement('div');
         actions.className = 'profile-actions';
@@ -116,11 +159,135 @@ class UserProfileManager {
     }
 
     async showEditProfile() {
-        showNotification('Info', 'Profile editing is not implemented yet.', 'info');
+        const user = this.currentProfile || currentUser;
+        if (!user) {
+            showNotification('Error', 'Unable to load profile data.', 'error');
+            return;
+        }
+
+        const modal = document.getElementById('profileModal');
+        if (!modal) return;
+
+        document.getElementById('profileModalTitle').textContent = 'Edit Profile';
+        document.getElementById('profileModalBody').innerHTML = `
+            <form id="profileEditForm" class="modal-form">
+                <div class="form-group">
+                    <label>First Name</label>
+                    <input type="text" name="firstName" value="${escapeHtml(user.firstName || '')}" required>
+                </div>
+                <div class="form-group">
+                    <label>Last Name</label>
+                    <input type="text" name="lastName" value="${escapeHtml(user.lastName || '')}" required>
+                </div>
+                <div class="form-group">
+                    <label>Department</label>
+                    <input type="text" name="department" value="${escapeHtml(user.department || '')}">
+                </div>
+                <div class="form-group">
+                    <label>Phone</label>
+                    <input type="text" name="phone" value="${escapeHtml(user.phone || '')}">
+                </div>
+                <div class="form-group">
+                    <label>Bio</label>
+                    <textarea name="bio" rows="4">${escapeHtml(user.bio || '')}</textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </form>
+        `;
+
+        const form = document.getElementById('profileEditForm');
+        if (form) {
+            form.addEventListener('submit', (event) => this.handleProfileUpdate(event));
+        }
+
+        modal.classList.add('active');
     }
 
     async showChangePassword() {
-        showNotification('Info', 'Password change flow is not implemented yet.', 'info');
+        const modal = document.getElementById('profileModal');
+        if (!modal) return;
+
+        document.getElementById('profileModalTitle').textContent = 'Change Password';
+        document.getElementById('profileModalBody').innerHTML = `
+            <form id="changePasswordForm" class="modal-form">
+                <div class="form-group">
+                    <label>Current Password</label>
+                    <input type="password" name="currentPassword" required>
+                </div>
+                <div class="form-group">
+                    <label>New Password</label>
+                    <input type="password" name="newPassword" required>
+                </div>
+                <div class="form-group">
+                    <label>Confirm New Password</label>
+                    <input type="password" name="confirmPassword" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Update Password</button>
+            </form>
+        `;
+
+        const form = document.getElementById('changePasswordForm');
+        if (form) {
+            form.addEventListener('submit', (event) => this.handlePasswordChange(event));
+        }
+
+        modal.classList.add('active');
+    }
+
+    async handleProfileUpdate(event) {
+        event.preventDefault();
+        const form = event.target;
+        const formData = new FormData(form);
+
+        const userData = {
+            firstName: formData.get('firstName')?.toString().trim(),
+            lastName: formData.get('lastName')?.toString().trim(),
+            department: formData.get('department')?.toString().trim(),
+            phone: formData.get('phone')?.toString().trim(),
+            bio: formData.get('bio')?.toString().trim()
+        };
+
+        const result = await this.updateProfile(userData);
+        if (result.success) {
+            const updatedUser = {
+                ...this.currentProfile,
+                ...result.data.user,
+                stats: this.currentProfile?.stats
+            };
+            this.currentProfile = updatedUser;
+            if (typeof currentUser !== 'undefined') {
+                currentUser = { ...currentUser, ...result.data.user };
+                sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+            }
+
+            this.displayProfile(updatedUser);
+            document.getElementById('profileModal').classList.remove('active');
+            showNotification('Success', result.message || 'Profile updated successfully');
+        } else {
+            showNotification('Error', result.error || 'Failed to update profile', 'error');
+        }
+    }
+
+    async handlePasswordChange(event) {
+        event.preventDefault();
+        const form = event.target;
+        const currentPassword = form.currentPassword.value;
+        const newPassword = form.newPassword.value;
+        const confirmPassword = form.confirmPassword.value;
+
+        if (newPassword !== confirmPassword) {
+            showNotification('Error', 'New passwords do not match', 'error');
+            return;
+        }
+
+        const result = await this.changePassword(currentPassword, newPassword);
+        if (result.success) {
+            document.getElementById('profileModal').classList.remove('active');
+            showNotification('Success', result.message || 'Password changed successfully');
+            form.reset();
+        } else {
+            showNotification('Error', result.error || 'Failed to change password', 'error');
+        }
     }
 
     async confirmDeactivate() {

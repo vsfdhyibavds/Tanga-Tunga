@@ -133,7 +133,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.history.replaceState({}, document.title, window.location.pathname);
 
     if (isAuthenticated()) {
-        showDashboard();
+        await showDashboard();
     } else {
         goToHome();
     }

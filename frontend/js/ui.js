@@ -74,7 +74,7 @@ function togglePassword(inputId) {
     }
 }
 
-function showDashboard() {
+async function showDashboard() {
     if (!isAuthenticated()) {
         showNotification('Error', 'Please log in first', 'error');
         return;
@@ -105,6 +105,10 @@ function showDashboard() {
     updateStats();
     loadReminders();
     loadEvents();
+
+    if (typeof profileManager !== 'undefined' && currentUser?.id) {
+        await profileManager.loadAndDisplayProfile(currentUser.id);
+    }
 }
 
 async function loadReminders() {

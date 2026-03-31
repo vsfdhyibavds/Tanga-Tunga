@@ -656,12 +656,12 @@ textarea {
 .modal.active {
     display: flex;
     pointer-events: auto;
-    z-index: 1000;
+    z-index: 10000;
 }
 
 .modal-content {
     position: relative;
-    z-index: 1001;
+    z-index: 10001;
     background: white;
     padding: 30px;
     border-radius: 15px;
@@ -670,6 +670,12 @@ textarea {
     max-height: 90vh;
     overflow-y: auto;
     pointer-events: auto;
+}
+
+.modal .btn,
+.modal .action-buttons {
+    position: relative;
+    z-index: 10002;
 }
 
 .modal-header {
@@ -690,6 +696,88 @@ textarea {
 /* ================================================
    Dashboard Stats
    ================================================ */
+
+.profile-section {
+    margin-bottom: 30px;
+}
+
+.profile-card {
+    background: #ffffff;
+    border: 1px solid #e6e6e6;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.06);
+    margin-bottom: 24px;
+}
+
+.profile-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.profile-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #6c63ff;
+    color: white;
+    display: grid;
+    place-items: center;
+    font-size: 24px;
+    font-weight: 700;
+}
+
+.profile-info h2 {
+    margin: 0 0 8px;
+    font-size: 22px;
+}
+
+.profile-info p {
+    margin: 4px 0;
+    color: #555;
+}
+
+.profile-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+.profile-details p {
+    margin: 0;
+    color: #333;
+    line-height: 1.5;
+}
+
+.profile-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.profile-stats {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.profile-stat {
+    background: #f6f6ff;
+    padding: 16px;
+    border-radius: 12px;
+    flex: 1;
+    text-align: center;
+}
+
+.profile-stat-value {
+    display: block;
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
 
 .stats {
     display: grid;

@@ -1,4 +1,4 @@
-# RUTick - Complete Event Management System
+# Tanga Tunga - Complete Event Management System
 
 A comprehensive event management platform for Riara University, designed to streamline the way students, faculty, and staff discover, register, and participate in campus events.
 
@@ -66,10 +66,11 @@ npm run seed
 - ✅ Event discovery and browsing
 - ✅ Event registration with QR code tickets
 - ✅ Event reminders (24h, 1h, day-of)
+- ✅ Add events to Google Calendar or download iCal files
 - ✅ Event reviews and ratings
 - ✅ Attendance tracking
 - ✅ Certificate generation and download
-- ✅ User profile management
+- ✅ User profile management (edit profile, change password)
 - ✅ Attendance history
 - ⚠️ Students cannot create events; create event access is limited to staff/admin
 
@@ -308,7 +309,7 @@ Rutick/
 
 **Option 1: Using Python (Recommended)**
 ```bash
-cd /path/to/Rutick
+cd /path/to/Tanga-Tunga
 python -m http.server 8000
 ```
 

@@ -375,14 +375,20 @@ function renderCalendarDayDetails(date, events = currentEvents.length ? currentE
         googleButton.className = 'btn btn-secondary';
         googleButton.type = 'button';
         googleButton.textContent = 'Add to Google Calendar';
-        googleButton.addEventListener('click', () => window.open(getGoogleCalendarUrl(event), '_blank'));
+        googleButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            window.open(getGoogleCalendarUrl(event), '_blank', 'noopener');
+        });
         actions.appendChild(googleButton);
 
         const icalButton = document.createElement('button');
         icalButton.className = 'btn btn-primary';
         icalButton.type = 'button';
         icalButton.textContent = 'Download iCal';
-        icalButton.addEventListener('click', () => downloadICal(event));
+        icalButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            downloadICal(event);
+        });
         actions.appendChild(icalButton);
 
         card.appendChild(actions);
@@ -826,14 +832,20 @@ function viewEvent(eventId) {
         googleCalBtn.className = 'btn btn-secondary';
         googleCalBtn.type = 'button';
         googleCalBtn.textContent = 'Add to Google Calendar';
-        googleCalBtn.addEventListener('click', () => window.open(getGoogleCalendarUrl(event), '_blank'));
+        googleCalBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            window.open(getGoogleCalendarUrl(event), '_blank', 'noopener');
+        });
         actions.appendChild(googleCalBtn);
 
         const icalBtn = document.createElement('button');
         icalBtn.className = 'btn btn-primary';
         icalBtn.type = 'button';
         icalBtn.textContent = 'Download iCal';
-        icalBtn.addEventListener('click', () => downloadICal(event));
+        icalBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            downloadICal(event);
+        });
         actions.appendChild(icalBtn);
 
         if (canCurrentUserDeleteEvent(event)) {
